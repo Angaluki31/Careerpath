@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Find your path | PathFinder</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ---------- Design tokens (same as the homepage) ---------- */
+    :root {
+      --ink: #0f2a43;
+      --paper: #eef3f7;
+      --route: #0e8c7f;
+      --marker: #f2c14e;
+      --line: #cfdbe5;
+      --white: #ffffff;
+      --error: #b3261e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+
+    body {
+      font-family: "Bricolage Grotesque", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.6;
+      font-size: 1.05rem;
+      min-height: 100vh;
+    }
+
+    a { color: inherit; }
+    :focus-visible { outline: 3px solid var(--marker); outline-offset: 3px; }
+
+    .wrap { max-width: 1050px; margin: 0 auto; padding: 0 1.5rem; }
+
+    /* ---------- Navbar ---------- */
+    .navbar { display: flex; justify-content: space-between; align-items: center; padding: 1.1rem 0; }
+    .logo { font-weight: 800; font-size: 1.35rem; text-decoration: none; letter-spacing: -0.02em; }
+    .navbar a:not(.logo):hover { text-decoration: underline; }
+
+    /* ---------- Buttons ---------- */
+    .btn {
+      display: inline-block;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--route);
+      color: var(--white);
+      padding: 0.8rem 1.6rem;
+      border-radius: 6px;
+      text-decoration: none;
+      border: 2px solid var(--route);
+    }
+    .btn:hover { background: var(--ink); border-color: var(--ink); }
+    .btn-outline { background: transparent; color: var(--ink); border-color: var(--ink); }
+    .btn-outline:hover { background: var(--ink); color: var(--white); }
+
+    /* ---------- Quiz layout ---------- */
+    .quiz-wrap { max-width: 720px; padding-top: 2rem; padding-bottom: 4rem; }
+
+    .progress-label { font-size: 0.95rem; margin-bottom: 0.5rem; }
+    .progress { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin-bottom: 2rem; }
+    .progress-bar { height: 100%; width: 0; background: var(--route); transition: width 0.25s ease; }
+
+    fieldset { border: 0; }
+    legend {
+      font-size: clamp(1.5rem, 3.5vw, 2rem);
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+    legend:focus { outline: none; }
+    .hint { margin-bottom: 1.2rem; }
+
+    .option {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.8rem;
+      background: var(--white);
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      margin-bottom: 0.7rem;
+      cursor: pointer;
+    }
+    .option:hover { border-color: var(--route); }
+    .option input { margin-top: 0.35rem; accent-color: var(--route); width: 1.1rem; height: 1.1rem; flex-shrink: 0; }
+    .option:has(input:checked) { border-color: var(--route); background: #e4f4f1; }
+    .option:has(input:focus-visible) { outline: 3px solid var(--marker); outline-offset: 2px; }
+
+    .error { color: var(--error); font-weight: 600; min-height: 1.6rem; margin: 0.4rem 0; }
+    .quiz-actions { display: flex; justify-content: space-between; gap: 1rem; margin-top: 0.5rem; }
+
+    /* ---------- Results ---------- */
+    .results h2 { font-size: clamp(1.7rem, 4vw, 2.3rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 0.8rem; }
+    .results .lead { margin-bottom: 2rem; }
+
+    .result {
+      background: var(--white);
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .result.best { border-color: var(--route); border-width: 3px; }
+    .result .tag { font-weight: 600; color: var(--route); margin-bottom: 0.2rem; }
+    .result h3 { font-size: 1.4rem; margin-bottom: 0.4rem; }
+    .result p { margin-bottom: 0.8rem; }
+    .result h4 { font-size: 1rem; margin-bottom: 0.2rem; }
+    .result ul { padding-left: 1.2rem; }
+
+    .note { margin: 1.5rem 0; }
+    .result-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+    @media (max-width: 520px) {
+      .quiz-actions .btn { flex: 1; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wrap">
+    <header class="navbar">
+      <a href="index.html" class="logo">PathFinder</a>
+      <a href="index.html">Back to home</a>
+    </header>
+  </div>
+
+  <main class="wrap quiz-wrap">
+
+    <!-- The questions appear here, one at a time -->
+    <section id="quiz-section" aria-label="Questionnaire">
+      <p class="progress-label" id="progress-label"></p>
+      <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
+
+      <form id="quiz" novalidate>
+        <fieldset id="question-box"></fieldset>
+        <p class="error" id="error" role="alert"></p>
+        <div class="quiz-actions">
+          <button type="button" class="btn btn-outline" id="back-button">Back</button>
+          <button type="submit" class="btn" id="next-button">Next</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- The results appear here after the last question -->
+    <section id="results" class="results" aria-live="polite" hidden></section>
+
+  </main>
+
+  <script>
+    /* =====================================================
+       1. THE DATA
+       Everything the quiz knows lives in these two objects.
+       To add a question or path, edit the data, not the logic.
+       ===================================================== */
+
+    const PATHS = {
+      frontend: {
+        name: "Frontend Development",
+        summary: "Build the parts of websites and apps that people see and use.",
+        firstStep: "Learn HTML, CSS and JavaScript, then a framework like React."
+      },
+      backend: {
+        name: "Backend Development",
+        summary: "Build the logic, databases and servers that power apps behind the scenes.",
+        firstStep: "Pick one language (Python or JavaScript), then learn databases and APIs."
+      },
+      data: {
+        name: "Data Analysis",
+        summary: "Turn data into answers and decisions using analysis and statistics.",
+        firstStep: "Start with spreadsheets and SQL, then learn Python for analysis."
+      },
+      design: {
+        name: "UX/UI Design",
+        summary: "Research what users need and design interfaces that are easy to use.",
+        firstStep: "Learn design principles and a tool like Figma, then make a small case study."
+      },
+      security: {
+        name: "Cybersecurity",
+        summary: "Protect systems and data by finding weaknesses before attackers do.",
+        firstStep: "Learn networking and Linux basics, then security fundamentals."
+      },
+      cloud: {
+        name: "Cloud and DevOps",
+        summary: "Run and automate the infrastructure that keeps software available.",
+        firstStep: "Learn Linux and networking, then get hands-on with one cloud provider such as AWS."
+      },
+      qa: {
+        name: "QA and Testing",
+        summary: "Make sure software works properly by testing it and catching problems early.",
+        firstStep: "Learn manual testing fundamentals, then move into test automation."
+      },
+      product: {
+        name: "Product Management",
+        summary: "Decide what gets built and why, working between users, the business and engineers.",
+        firstStep: "Learn product basics and user research, then practice writing clear requirements."
+      }
+    };
+
+    /* Each option can add points to one or more paths (the "scores").
+       Options with a "value" but no scores are saved for later
+       (for example, to personalise the roadmap) but don't affect the match. */
+    const QUESTIONS = [
+      {
+        id: "stage",
+        type: "single",
+        text: "Where are you starting from?",
+        options: [
+          { label: "I'm new to tech", value: "beginner" },
+          { label: "I'm switching from another career", value: "switcher" },
+          { label: "I already work in tech", value: "in-tech" }
+        ]
+      },
+      {
+        id: "background",
+        type: "single",
+        text: "What is your main background?",
+        hint: "Pick the closest fit.",
+        options: [
+          { label: "Design or creative work", scores: { design: 3, frontend: 2, product: 1 } },
+          { label: "Business, sales or marketing", scores: { product: 3, data: 1 } },
+          { label: "Teaching, writing or communication", scores: { product: 2, qa: 2, design: 1 } },
+          { label: "Science, math or research", scores: { data: 3, backend: 1, security: 1 } },
+          { label: "Operations, logistics or admin", scores: { qa: 2, cloud: 2, product: 2 } },
+          { label: "IT or tech support", scores: { cloud: 3, security: 2, qa: 1 } },
+          { label: "Something else, or no work experience yet" }
+        ]
+      },
+      {
+        id: "enjoy",
+        type: "multi",
+        max: 3,
+        text: "Which of these sound most enjoyable?",
+        hint: "Choose up to 3.",
+        options: [
+          { label: "Making something people can see and click", scores: { frontend: 3, design: 2 } },
+          { label: "Solving logic puzzles and building systems behind the scenes", scores: { backend: 3, cloud: 1 } },
+          { label: "Finding patterns in numbers and data", scores: { data: 3 } },
+          { label: "Figuring out what users need and designing for them", scores: { design: 3, product: 2 } },
+          { label: "Spotting weaknesses and working out how things could be broken", scores: { security: 3, qa: 2 } },
+          { label: "Keeping systems fast and running smoothly", scores: { cloud: 3, backend: 1 } },
+          { label: "Checking details and making sure things work properly", scores: { qa: 3 } },
+          { label: "Organizing people, priorities and plans", scores: { product: 3 } }
+        ]
+      },
+      {
+        id: "style",
+        type: "single",
+        text: "How do you prefer to work?",
+        options: [
+          { label: "Mostly on my own, with long stretches of focus", scores: { backend: 2, data: 2, security: 2 } },
+          { label: "Closely with other people every day", scores: { product: 3, design: 2, frontend: 1 } },
+          { label: "A mix of both", scores: { frontend: 1, backend: 1, qa: 1, cloud: 1 } }
+        ]
+      },
+      {
+        id: "math",
+        type: "single",
+        text: "How do you feel about math and statistics?",
+        options: [
+          { label: "I enjoy them", scores: { data: 3, backend: 1, security: 1 } },
+          { label: "Fine when I need them", scores: { frontend: 1, backend: 1, qa: 1, cloud: 1 } },
+          { label: "I'd rather avoid them", scores: { design: 2, product: 1, frontend: 1 } }
+        ]
+      },
+      {
+        id: "goal",
+        type: "single",
+        text: "What matters most in your first role in this path?",
+        options: [
+          { label: "Remote-friendly work", value: "remote" },
+          { label: "The fastest route to a job", value: "fast" },
+          { label: "Strong long-term pay", value: "pay" },
+          { label: "Work I find interesting", value: "interest" }
+        ]
+      },
+      {
+        id: "time",
+        type: "single",
+        text: "How much time can you spend learning each week?",
+        options: [
+          { label: "Under 5 hours", value: "under-5" },
+          { label: "5 to 10 hours", value: "5-10" },
+          { label: "10 to 20 hours", value: "10-20" },
+          { label: "More than 20 hours", value: "20-plus" }
+        ]
+      }
+    ];
+
+    const STAGE_INTRO = {
+      "beginner": "Since you're new to tech, these are good places to start exploring.",
+      "switcher": "Since you're switching careers, these paths can make use of what you already know.",
+      "in-tech": "Since you already work in tech, these are strong directions to move toward."
+    };
+
+    /* =====================================================
+       2. THE STATE
+       ===================================================== */
+
+    let current = 0;          // index of the question being shown
+    const answers = {};       // question id -> list of chosen option numbers
+
+    const quizSection = document.getElementById("quiz-section");
+    const resultsSection = document.getElementById("results");
+    const form = document.getElementById("quiz");
+    const box = document.getElementById("question-box");
+    const errorBox = document.getElementById("error");
+    const backButton = document.getElementById("back-button");
+    const nextButton = document.getElementById("next-button");
+
+    /* =====================================================
+       3. SHOWING A QUESTION
+       ===================================================== */
+
+    function renderQuestion() {
+      const q = QUESTIONS[current];
+      const saved = answers[q.id] || [];
+      errorBox.textContent = "";
+      box.innerHTML = "";
+
+      const legend = document.createElement("legend");
+      legend.textContent = q.text;
+      legend.tabIndex = -1;
+      box.appendChild(legend);
+
+      if (q.hint) {
+        const hint = document.createElement("p");
+        hint.className = "hint";
+        hint.textContent = q.hint;
+        box.appendChild(hint);
+      }
+
+      q.options.forEach(function (option, index) {
+        const label = document.createElement("label");
+        label.className = "option";
+
+        const input = document.createElement("input");
+        input.type = q.type === "multi" ? "checkbox" : "radio";
+        input.name = q.id;
+        input.value = index;
+        input.checked = saved.includes(index);
+
+        const text = document.createElement("span");
+        text.textContent = option.label;
+
+        label.append(input, text);
+        box.appendChild(label);
+      });
+
+      // Progress bar and buttons
+      const number = current + 1;
+      document.getElementById("progress-label").textContent =
+        "Question " + number + " of " + QUESTIONS.length;
+      document.getElementById("progress-bar").style.width =
+        (number / QUESTIONS.length) * 100 + "%";
+      backButton.style.visibility = current === 0 ? "hidden" : "visible";
+      nextButton.textContent = current === QUESTIONS.length - 1 ? "See my results" : "Next";
+
+      legend.focus({ preventScroll: true });
+    }
+
+    function getSelected() {
+      return Array.from(box.querySelectorAll("input:checked")).map(function (input) {
+        return Number(input.value);
+      });
+    }
+
+    /* =====================================================
+       4. BUTTONS AND EVENTS
+       ===================================================== */
+
+    // Limit multi-select questions to their maximum
+    box.addEventListener("change", function (event) {
+      const q = QUESTIONS[current];
+      if (q.type === "multi" && getSelected().length > q.max) {
+        event.target.checked = false;
+        errorBox.textContent = "You can choose up to " + q.max + ". Untick one to change your choice.";
+      } else {
+        errorBox.textContent = "";
+      }
+    });
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      const selected = getSelected();
+
+      if (selected.length === 0) {
+        errorBox.textContent = "Choose an option to continue.";
+        return;
+      }
+
+      answers[QUESTIONS[current].id] = selected;
+
+      if (current < QUESTIONS.length - 1) {
+        current++;
+        renderQuestion();
+      } else {
+        showResults();
+      }
+    });
+
+    backButton.addEventListener("click", function () {
+      answers[QUESTIONS[current].id] = getSelected();
+      current--;
+      renderQuestion();
+    });
+
+    /* =====================================================
+       5. THE SCORING
+       Add up the points from every option the person chose,
+       then take the three paths with the most points.
+       ===================================================== */
+
+    function calculateResults() {
+      const totals = {};
+      const reasons = {};
+      Object.keys(PATHS).forEach(function (key) {
+        totals[key] = 0;
+        reasons[key] = [];
+      });
+
+      QUESTIONS.forEach(function (q) {
+        (answers[q.id] || []).forEach(function (index) {
+          const option = q.options[index];
+          if (!option.scores) return;
+          Object.entries(option.scores).forEach(function ([pathKey, points]) {
+            totals[pathKey] += points;
+            reasons[pathKey].push(option.label);
+          });
+        });
+      });
+
+      const top = Object.keys(PATHS)
+        .sort(function (a, b) { return totals[b] - totals[a]; })
+        .slice(0, 3);
+
+      return { top: top, reasons: reasons };
+    }
+
+    function chosenValue(questionId) {
+      const q = QUESTIONS.find(function (item) { return item.id === questionId; });
+      const picked = (answers[questionId] || [])[0];
+      return picked === undefined ? null : q.options[picked].value;
+    }
+
+    /* =====================================================
+       6. SHOWING THE RESULTS
+       ===================================================== */
+
+    function showResults() {
+      const result = calculateResults();
+      const stage = chosenValue("stage");
+
+      // Save so the roadmap page can use it later
+      try {
+        localStorage.setItem("pathfinder-results", JSON.stringify({
+          top: result.top,
+          stage: stage,
+          goal: chosenValue("goal"),
+          time: chosenValue("time"),
+          savedAt: new Date().toISOString()
+        }));
+      } catch (error) {
+        console.warn("Could not save results:", error);
+      }
+
+      resultsSection.innerHTML = "";
+
+      const heading = document.createElement("h2");
+      heading.textContent = "Your suggested paths";
+      heading.tabIndex = -1;
+
+      const lead = document.createElement("p");
+      lead.className = "lead";
+      lead.textContent = STAGE_INTRO[stage] || "Here are the paths that fit your answers best.";
+
+      resultsSection.append(heading, lead);
+
+      result.top.forEach(function (key, position) {
+        const path = PATHS[key];
+        const card = document.createElement("article");
+        card.className = "result" + (position === 0 ? " best" : "");
+
+        const tag = document.createElement("p");
+        tag.className = "tag";
+        tag.textContent = position === 0 ? "Best match" : "Also a good fit";
+
+        const title = document.createElement("h3");
+        title.textContent = path.name;
+
+        const summary = document.createElement("p");
+        summary.textContent = path.summary;
+
+        const firstStep = document.createElement("p");
+        firstStep.textContent = "Where to start: " + path.firstStep;
+
+        card.append(tag, title, summary, firstStep);
+
+        // "Why this?" list, built from the answers that added points
+        const why = result.reasons[key].slice(0, 3);
+        if (why.length > 0) {
+          const whyTitle = document.createElement("h4");
+          whyTitle.textContent = "Why it came up";
+          const list = document.createElement("ul");
+          why.forEach(function (reason) {
+            const item = document.createElement("li");
+            item.textContent = "You chose: " + reason;
+            list.appendChild(item);
+          });
+          card.append(whyTitle, list);
+        }
+
+        resultsSection.appendChild(card);
+      });
+
+      const note = document.createElement("p");
+      note.className = "note";
+      note.textContent = "These are suggestions, not verdicts. Detailed roadmaps for each path are coming soon.";
+
+      const actions = document.createElement("div");
+      actions.className = "result-actions";
+
+      const restart = document.createElement("button");
+      restart.type = "button";
+      restart.className = "btn";
+      restart.textContent = "Start over";
+      restart.addEventListener("click", restartQuiz);
+
+      const home = document.createElement("a");
+      home.className = "btn btn-outline";
+      home.href = "index.html";
+      home.textContent = "Back to home";
+
+      actions.append(restart, home);
+      resultsSection.append(note, actions);
+
+      quizSection.hidden = true;
+      resultsSection.hidden = false;
+      heading.focus();
+      window.scrollTo(0, 0);
+    }
+
+    function restartQuiz() {
+      Object.keys(answers).forEach(function (key) { delete answers[key]; });
+      current = 0;
+      resultsSection.hidden = true;
+      quizSection.hidden = false;
+      renderQuestion();
+      window.scrollTo(0, 0);
+    }
+
+    // Start the quiz
+    renderQuestion();
+  </script>
+</body>
+</html>
