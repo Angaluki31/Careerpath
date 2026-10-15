@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your roadmap | PathFinder</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ---------- Design tokens (same as the other pages) ---------- */
+    :root {
+      --ink: #0f2a43;
+      --paper: #eef3f7;
+      --route: #0e8c7f;
+      --marker: #f2c14e;
+      --line: #cfdbe5;
+      --white: #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+
+    body {
+      font-family: "Bricolage Grotesque", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.6;
+      font-size: 1.05rem;
+      min-height: 100vh;
+    }
+
+    a { color: inherit; }
+    :focus-visible { outline: 3px solid var(--marker); outline-offset: 3px; }
+
+    .wrap { max-width: 1050px; margin: 0 auto; padding: 0 1.5rem; }
+
+    /* ---------- Navbar ---------- */
+    .navbar { display: flex; justify-content: space-between; align-items: center; padding: 1.1rem 0; }
+    .logo { font-weight: 800; font-size: 1.35rem; text-decoration: none; letter-spacing: -0.02em; }
+    .navbar a:not(.logo):hover { text-decoration: underline; }
+
+    /* ---------- Buttons ---------- */
+    .btn {
+      display: inline-block;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--route);
+      color: var(--white);
+      padding: 0.8rem 1.6rem;
+      border-radius: 6px;
+      text-decoration: none;
+      border: 2px solid var(--route);
+    }
+    .btn:hover { background: var(--ink); border-color: var(--ink); }
+    .btn-outline { background: transparent; color: var(--ink); border-color: var(--ink); }
+    .btn-outline:hover { background: var(--ink); color: var(--white); }
+
+    /* ---------- Page layout ---------- */
+    .roadmap-wrap { max-width: 760px; padding-top: 2rem; padding-bottom: 4rem; }
+    h1 { font-size: clamp(1.9rem, 4.5vw, 2.7rem); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.8rem; }
+    .lead { margin-bottom: 1.8rem; }
+
+    /* Path switcher */
+    .switcher { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1.5rem; }
+    .switch {
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0.55rem 1.1rem;
+      border-radius: 6px;
+      border: 2px solid var(--line);
+      background: var(--white);
+      color: var(--ink);
+    }
+    .switch:hover { border-color: var(--route); }
+    .switch[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--white); }
+
+    /* Summary and progress */
+    .summary { background: var(--white); border: 2px solid var(--line); border-radius: 8px; padding: 1.2rem 1.4rem; margin-bottom: 1.2rem; }
+    .progress-text { font-size: 0.95rem; margin-bottom: 0.4rem; }
+    .progress { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin-bottom: 2.2rem; }
+    .progress-bar { height: 100%; width: 0; background: var(--route); transition: width 0.25s ease; }
+
+    /* The phases, drawn like stops on a route */
+    .phases { list-style: none; padding-left: 3.2rem; }
+    .phases li { position: relative; padding-bottom: 1.4rem; }
+    .phases li:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      left: calc(-1.9rem - 2px);
+      top: 2.5rem;
+      bottom: 0;
+      width: 4px;
+      background: var(--line);
+    }
+    .marker {
+      position: absolute;
+      left: -3.1rem;
+      top: 0.1rem;
+      display: grid;
+      place-items: center;
+      width: 2.4rem;
+      height: 2.4rem;
+      border-radius: 50%;
+      background: var(--marker);
+      border: 3px solid var(--ink);
+      font-weight: 800;
+    }
+    .phases li.done .marker { background: var(--route); border-color: var(--route); color: var(--white); }
+    .phases li.done .phase-card { border-color: var(--route); }
+
+    .phase-card { background: var(--white); border: 2px solid var(--line); border-radius: 8px; padding: 1.2rem 1.4rem; }
+    .phase-card h2 { font-size: 1.3rem; line-height: 1.2; margin-bottom: 0.2rem; }
+    .meta { font-size: 0.95rem; margin-bottom: 0.8rem; }
+    .phase-card h3 { font-size: 1rem; margin-bottom: 0.2rem; }
+    .phase-card ul { padding-left: 1.2rem; margin-bottom: 0.8rem; }
+    .phase-card p.build { margin-bottom: 1rem; }
+    .done-label { display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600; }
+    .done-label input { accent-color: var(--route); width: 1.1rem; height: 1.1rem; }
+
+    .tip { margin: 1.2rem 0 1.8rem; }
+    .actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+    @media (max-width: 520px) {
+      .phases { padding-left: 2.8rem; }
+      .marker { left: -2.8rem; width: 2.1rem; height: 2.1rem; }
+      .phases li:not(:last-child)::after { left: calc(-1.75rem - 2px); top: 2.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wrap">
+    <header class="navbar">
+      <a href="index.html" class="logo">PathFinder</a>
+      <a href="questionnaire.html">Retake the questionnaire</a>
+    </header>
+  </div>
+
+  <main class="wrap roadmap-wrap">
+
+    <!-- Shown when there are no saved quiz results -->
+    <section id="empty" hidden>
+      <h1>No results yet</h1>
+      <p class="lead">Your roadmap is built from your questionnaire answers. Take the questionnaire first and it will appear here.</p>
+      <a href="questionnaire.html" class="btn">Start the questionnaire</a>
+    </section>
+
+    <!-- Shown when results exist -->
+    <section id="roadmap" hidden>
+      <h1>Your roadmap</h1>
+      <p class="lead" id="lead"></p>
+
+      <div class="switcher" id="switcher" role="group" aria-label="Choose a path"></div>
+
+      <div class="summary" id="summary"></div>
+
+      <p class="progress-text" id="progress-text"></p>
+      <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
+
+      <ol class="phases" id="phases"></ol>
+
+      <p class="tip" id="tip"></p>
+
+      <div class="actions">
+        <a href="questionnaire.html" class="btn btn-outline">Retake the questionnaire</a>
+        <a href="index.html" class="btn btn-outline">Back to home</a>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    /* =====================================================
+       1. THE DATA
+       Each path has phases. Each phase has an hours estimate,
+       things to learn, and a project to build.
+       Hours are rough estimates for a beginner.
+       ===================================================== */
+
+    const ROADMAPS = {
+      frontend: {
+        name: "Frontend Development",
+        phases: [
+          { title: "Web foundations", hours: 60,
+            learn: ["HTML structure and semantic tags", "CSS layout with Flexbox and Grid", "Responsive design for phones and desktops"],
+            build: "A personal portfolio page." },
+          { title: "JavaScript", hours: 80,
+            learn: ["Variables, functions, arrays and objects", "Changing the page with the DOM and events", "Fetching data from APIs"],
+            build: "A to-do app or a weather app that uses a public API." },
+          { title: "React and tooling", hours: 80,
+            learn: ["Components, props and state in React", "Git and GitHub workflow", "npm and a build tool like Vite"],
+            build: "A multi-page React app, such as a movie search." },
+          { title: "Getting job-ready", hours: 60,
+            learn: ["Accessibility and performance basics", "Testing basics", "Deploying with GitHub Pages, Netlify or Vercel"],
+            build: "A polished capstone project with a clear README for your portfolio." }
+        ]
+      },
+      backend: {
+        name: "Backend Development",
+        phases: [
+          { title: "Programming fundamentals", hours: 60,
+            learn: ["Python syntax and data structures", "Functions, modules and files", "Reading errors and debugging"],
+            build: "A command-line expense tracker." },
+          { title: "Web and APIs", hours: 70,
+            learn: ["How HTTP and REST work", "A framework such as Flask, FastAPI or Express", "Working with JSON"],
+            build: "A REST API for a notes app." },
+          { title: "Databases", hours: 70,
+            learn: ["SQL queries and joins", "Designing tables", "Using an ORM"],
+            build: "Add a database and user accounts to your API." },
+          { title: "Production skills", hours: 70,
+            learn: ["Authentication basics", "Writing tests", "Docker basics and deployment"],
+            build: "A deployed API with documentation." }
+        ]
+      },
+      data: {
+        name: "Data Analysis",
+        phases: [
+          { title: "Spreadsheets and statistics", hours: 50,
+            learn: ["Excel or Google Sheets formulas and pivot tables", "Mean, median and distributions", "Asking good questions of data"],
+            build: "An analysis of a public dataset in a spreadsheet." },
+          { title: "SQL", hours: 60,
+            learn: ["SELECT, WHERE and GROUP BY", "JOINs across tables", "Subqueries and window functions"],
+            build: "Answers to 10 business questions from a sample database." },
+          { title: "Python for analysis", hours: 80,
+            learn: ["Python basics", "pandas for cleaning and exploring data", "Charts with matplotlib or seaborn"],
+            build: "A notebook that cleans and explores a messy dataset." },
+          { title: "Dashboards and storytelling", hours: 60,
+            learn: ["Power BI or Tableau", "Presenting findings to non-technical people", "Building a portfolio"],
+            build: "An end-to-end dashboard on a topic you care about." }
+        ]
+      },
+      design: {
+        name: "UX/UI Design",
+        phases: [
+          { title: "Design foundations", hours: 40,
+            learn: ["Layout, color, typography and hierarchy", "Usability heuristics", "Accessibility basics"],
+            build: "A written critique of three apps you use." },
+          { title: "Research and flows", hours: 50,
+            learn: ["User interviews and surveys", "Personas and user flows", "Wireframing"],
+            build: "Wireframes for an app idea, based on talking to 5 people." },
+          { title: "Figma and UI design", hours: 60,
+            learn: ["Components and auto layout in Figma", "Interactive prototypes", "Design system basics"],
+            build: "A high-fidelity clickable prototype." },
+          { title: "Case studies", hours: 60,
+            learn: ["Writing a case study", "Usability testing", "Building a portfolio site"],
+            build: "Two or three case studies showing your process." }
+        ]
+      },
+      security: {
+        name: "Cybersecurity",
+        phases: [
+          { title: "IT foundations", hours: 70,
+            learn: ["Networking: TCP/IP, DNS and HTTP", "The Linux command line", "Basic scripting in Python or Bash"],
+            build: "A home lab with virtual machines." },
+          { title: "Security fundamentals", hours: 70,
+            learn: ["The CIA triad, threats and encryption", "Authentication and the OWASP Top 10", "Common security tools"],
+            build: "A write-up explaining the OWASP Top 10 with examples." },
+          { title: "Hands-on practice", hours: 80,
+            learn: ["Legal practice platforms such as TryHackMe and Hack The Box", "Vulnerability scanning in your own lab", "Reading logs"],
+            build: "Published write-ups of challenges you solved." },
+          { title: "Specialize and certify", hours: 60,
+            learn: ["Choosing between defensive and offensive security", "An entry-level certification such as CompTIA Security+", "Incident response basics"],
+            build: "A portfolio of write-ups, plus a certification if you choose to take one." }
+        ]
+      },
+      cloud: {
+        name: "Cloud and DevOps",
+        phases: [
+          { title: "Linux and networking", hours: 60,
+            learn: ["The command line and shell scripting", "Networking basics", "Git"],
+            build: "A Bash script that automates a task." },
+          { title: "Cloud fundamentals", hours: 70,
+            learn: ["Core services on AWS, Azure or GCP: compute, storage and networking", "Identity and access management", "An entry-level cloud certification"],
+            build: "A static site and a small app hosted in the cloud." },
+          { title: "Automation", hours: 80,
+            learn: ["Containers with Docker", "CI/CD with GitHub Actions", "Infrastructure as code with Terraform"],
+            build: "A pipeline that builds, tests and deploys an app." },
+          { title: "Operations", hours: 60,
+            learn: ["Monitoring and logging", "Kubernetes basics", "Incident handling and cost awareness"],
+            build: "A monitored multi-service app." }
+        ]
+      },
+      qa: {
+        name: "QA and Testing",
+        phases: [
+          { title: "Testing fundamentals", hours: 40,
+            learn: ["Types of testing and the software lifecycle", "Writing test cases and bug reports", "Exploratory testing"],
+            build: "Test a real website and write 10 clear bug reports." },
+          { title: "Tools and basics", hours: 50,
+            learn: ["A tracker such as Jira", "SQL basics", "API testing with Postman"],
+            build: "A test plan and a Postman collection for a public API." },
+          { title: "Test automation", hours: 80,
+            learn: ["Programming basics in JavaScript or Python", "Playwright or Selenium", "Git"],
+            build: "An automated test suite for a demo website." },
+          { title: "CI and career prep", hours: 50,
+            learn: ["Running tests in CI", "Performance and accessibility testing", "ISTQB Foundation material (optional)"],
+            build: "A portfolio repo with a test suite and clear documentation." }
+        ]
+      },
+      product: {
+        name: "Product Management",
+        phases: [
+          { title: "Product foundations", hours: 40,
+            learn: ["What product managers do", "User problems and value", "Metrics basics"],
+            build: "A one-page analysis of a product you use." },
+          { title: "Research and discovery", hours: 50,
+            learn: ["Interviews and surveys", "Prioritization frameworks", "Writing user stories and requirements"],
+            build: "A product brief for an idea you tested with 5 interviews." },
+          { title: "Delivery and data", hours: 60,
+            learn: ["Agile and scrum", "Roadmapping", "Analytics and SQL basics"],
+            build: "A roadmap and success metrics for your brief." },
+          { title: "Experience and portfolio", hours: 50,
+            learn: ["Working with stakeholders", "Writing case studies", "Shipping a small product"],
+            build: "A small real product, with your decisions documented." }
+        ]
+      }
+    };
+
+    // Hours per week we assume for each answer in the questionnaire
+    const WEEKLY_HOURS = { "under-5": 4, "5-10": 7, "10-20": 15, "20-plus": 25 };
+
+    const STAGE_LEAD = {
+      "beginner": "You're new to tech, so each phase starts from the basics.",
+      "switcher": "You're switching careers, so you may move through some early phases faster than the estimates.",
+      "in-tech": "You already work in tech, so you may be able to skip or speed through phases you already know."
+    };
+
+    const GOAL_TIPS = {
+      "remote": "Remote-friendly roles usually look for a strong portfolio and clear written communication, so document every project well.",
+      "fast": "To move quickly, focus on the first two phases, then start applying while you finish the rest. One strong project beats many small ones.",
+      "pay": "Pay tends to grow with depth, so once you have the basics, pick one specialty and go deep on it.",
+      "interest": "Since interest matters most to you, try the first phase's project before committing to the whole path."
+    };
+
+    /* =====================================================
+       2. LOADING AND SAVING
+       ===================================================== */
+
+    function loadResults() {
+      try {
+        const raw = localStorage.getItem("pathfinder-results");
+        const data = raw ? JSON.parse(raw) : null;
+        const valid = data && Array.isArray(data.top) && data.top.length > 0 &&
+                      data.top.every(function (key) { return ROADMAPS[key]; });
+        return valid ? data : null;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function loadProgress() {
+      try {
+        return JSON.parse(localStorage.getItem("pathfinder-progress")) || {};
+      } catch (error) {
+        return {};
+      }
+    }
+
+    function saveProgress() {
+      try {
+        localStorage.setItem("pathfinder-progress", JSON.stringify(progress));
+      } catch (error) {
+        console.warn("Could not save progress:", error);
+      }
+    }
+
+    const results = loadResults();
+    const progress = loadProgress();   // path key -> list of true/false per phase
+    let selectedPath = results ? results.top[0] : null;
+
+    /* =====================================================
+       3. DRAWING THE PAGE
+       ===================================================== */
+
+    function renderSwitcher() {
+      const switcher = document.getElementById("switcher");
+      switcher.innerHTML = "";
+      results.top.forEach(function (key) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "switch";
+        button.textContent = ROADMAPS[key].name;
+        button.setAttribute("aria-pressed", key === selectedPath ? "true" : "false");
+        button.addEventListener("click", function () {
+          selectedPath = key;
+          renderSwitcher();
+          renderRoadmap();
+        });
+        switcher.appendChild(button);
+      });
+    }
+
+    function renderRoadmap() {
+      const path = ROADMAPS[selectedPath];
+      const weekly = WEEKLY_HOURS[results.time] || 7;
+      const totalHours = path.phases.reduce(function (sum, p) { return sum + p.hours; }, 0);
+      const totalWeeks = Math.ceil(totalHours / weekly);
+      const totalMonths = Math.max(1, Math.round(totalWeeks / 4.33));
+
+      document.getElementById("summary").textContent =
+        path.name + " takes roughly " + totalHours + " hours in total. At about " + weekly +
+        " hours a week, that's around " + totalWeeks + " weeks (about " + totalMonths +
+        " months). These are rough estimates, and everyone moves at a different pace.";
+
+      if (!progress[selectedPath]) {
+        progress[selectedPath] = path.phases.map(function () { return false; });
+      }
+
+      const list = document.getElementById("phases");
+      list.innerHTML = "";
+
+      path.phases.forEach(function (phase, index) {
+        const weeks = Math.ceil(phase.hours / weekly);
+
+        const item = document.createElement("li");
+        if (progress[selectedPath][index]) item.classList.add("done");
+
+        const marker = document.createElement("span");
+        marker.className = "marker";
+        marker.textContent = index + 1;
+        marker.setAttribute("aria-hidden", "true");
+
+        const card = document.createElement("div");
+        card.className = "phase-card";
+
+        const title = document.createElement("h2");
+        title.textContent = "Phase " + (index + 1) + ": " + phase.title;
+
+        const meta = document.createElement("p");
+        meta.className = "meta";
+        meta.textContent = "About " + phase.hours + " hours, roughly " + weeks + (weeks === 1 ? " week" : " weeks") + " at your pace";
+
+        const learnTitle = document.createElement("h3");
+        learnTitle.textContent = "What to learn";
+
+        const learnList = document.createElement("ul");
+        phase.learn.forEach(function (topic) {
+          const li = document.createElement("li");
+          li.textContent = topic;
+          learnList.appendChild(li);
+        });
+
+        const buildTitle = document.createElement("h3");
+        buildTitle.textContent = "What to build";
+
+        const build = document.createElement("p");
+        build.className = "build";
+        build.textContent = phase.build;
+
+        const label = document.createElement("label");
+        label.className = "done-label";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = progress[selectedPath][index];
+        checkbox.addEventListener("change", function () {
+          progress[selectedPath][index] = checkbox.checked;
+          item.classList.toggle("done", checkbox.checked);
+          saveProgress();
+          updateProgress();
+        });
+        const labelText = document.createElement("span");
+        labelText.textContent = "I've finished this phase";
+        label.append(checkbox, labelText);
+
+        card.append(title, meta, learnTitle, learnList, buildTitle, build, label);
+        item.append(marker, card);
+        list.appendChild(item);
+      });
+
+      document.getElementById("tip").textContent = GOAL_TIPS[results.goal] || "";
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const done = progress[selectedPath].filter(Boolean).length;
+      const total = progress[selectedPath].length;
+      document.getElementById("progress-text").textContent =
+        done + " of " + total + " phases finished";
+      document.getElementById("progress-bar").style.width = (done / total) * 100 + "%";
+    }
+
+    /* =====================================================
+       4. START
+       ===================================================== */
+
+    if (results) {
+      document.getElementById("lead").textContent =
+        (STAGE_LEAD[results.stage] || "") + " Switch between your top three paths below.";
+      document.getElementById("roadmap").hidden = false;
+      renderSwitcher();
+      renderRoadmap();
+    } else {
+      document.getElementById("empty").hidden = false;
+    }
+  </script>
+</body>
+</html>

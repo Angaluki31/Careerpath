@@ -521,25 +521,30 @@
       });
 
       const note = document.createElement("p");
-      note.className = "note";
-      note.textContent = "These are suggestions, not verdicts. Detailed roadmaps for each path are coming soon.";
+note.className = "note";
+note.textContent = "These are suggestions, not verdicts. Open your roadmap to see a step-by-step plan for each path.";
 
-      const actions = document.createElement("div");
-      actions.className = "result-actions";
+const actions = document.createElement("div");
+actions.className = "result-actions";
 
-      const restart = document.createElement("button");
-      restart.type = "button";
-      restart.className = "btn";
-      restart.textContent = "Start over";
-      restart.addEventListener("click", restartQuiz);
+const roadmap = document.createElement("a");
+roadmap.className = "btn";
+roadmap.href = "roadmap.html";
+roadmap.textContent = "See my roadmap";
 
-      const home = document.createElement("a");
-      home.className = "btn btn-outline";
-      home.href = "index.html";
-      home.textContent = "Back to home";
+const restart = document.createElement("button");
+restart.type = "button";
+restart.className = "btn btn-outline";
+restart.textContent = "Start over";
+restart.addEventListener("click", restartQuiz);
 
-      actions.append(restart, home);
-      resultsSection.append(note, actions);
+const home = document.createElement("a");
+home.className = "btn btn-outline";
+home.href = "index.html";
+home.textContent = "Back to home";
+
+actions.append(roadmap, restart, home);
+resultsSection.append(note, actions);
 
       quizSection.hidden = true;
       resultsSection.hidden = false;
